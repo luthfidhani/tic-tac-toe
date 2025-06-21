@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic-Tac-Toe Online</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
+    <div x-data="gameApp()" x-init="init()" class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">🎮 Tic-Tac-Toe Online</h1>
+            <p class="text-blue-200">Main bareng temen secara real-time!</p>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="mb-6 text-center">
+            <div x-show="!connected" class="inline-flex items-center px-4 py-2 bg-red-500 text-white rounded-lg">
+                <div class="w-2 h-2 bg-white rounded-full mr-2 animate-pulse"></div>
+                Disconnected
+            </div>
+            <div x-show="connected" class="inline-flex items-center px-4 py-2 bg-green-500 text-white rounded-lg">
+                <div class="w-2 h-2 bg-white rounded-full mr-2"></div>
+                Connected
+            </div>
+        </div>
+
+        <!-- Room Management -->
+        <div x-show="!inRoom" class="max-w-md mx-auto">
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 shadow-xl">
+                <h2 class="text-2xl font-bold text-white mb-6 text-center">Join Game</h2>
+                
+                <!-- Create Room -->
+                <div class="mb-6">
+                    <button @click="createRoom()" 
+                            :disabled="loading"
+                            class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span x-show="!loading">🎯 Create New Room</span>
+                        <span x-show="loading" class="flex items-center justify-center">
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Creating Room...
+                        </span>
+                    </button>
+                </div>
+
+                <!-- Join Room -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span class="text-gray-400">🏠</span>
+                    </div>
+                    <input x-model="roomIdToJoin" 
+                           type="text" 
+                           placeholder="Enter Room ID"
+                           class="w-full pl-10 pr-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent">
+                </div>
+                
+                <button @click="joinRoom()" 
+                        :disabled="!roomIdToJoin || loading"
+                        class="w-full mt-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span x-show="!loading">🚀 Join Room</span>
+                    <span x-show="loading" class="flex items-center justify-center">
+                        <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Joining...
+                    </span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Room -->
+        <div x-show="inRoom" class="max-w-2xl mx-auto">
+            <!-- Room Info -->
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 mb-6 shadow-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-white">Room: <span x-text="roomId" class="text-yellow-300"></span></h2>
+                    <button @click="leaveRoom()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors">
+                        Leave Room
+                    </button>
+                </div>
+                
+                <!-- Share Room ID -->
+                <div class="flex items-center space-x-2 mb-4">
+                    <span class="text-blue-200">Share Room ID:</span>
+                    <div class="flex-1 bg-white/20 rounded px-3 py-2 text-white font-mono" x-text="roomId"></div>
+                    <button @click="copyRoomId()" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded transition-colors">
+                        Copy
+                    </button>
+                </div>
+
+                <!-- Game Status -->
+                <div class="text-center">
+                    <div x-show="gameStatus === 'waiting'" class="text-yellow-300 text-lg">
+                        ⏳ Waiting for opponent...
+                    </div>
+                    <div x-show="gameStatus === 'playing'" class="text-green-300 text-lg">
+                        🎮 Game in progress - <span x-text="currentPlayer === playerSymbol ? 'Your turn!' : 'Opponent\'s turn'"></span>
+                    </div>
+                    <div x-show="gameStatus === 'won'" class="text-green-400 text-xl font-bold">
+                        🎉 <span x-text="winner + ' wins!'"></span>
+                    </div>
+                    <div x-show="gameStatus === 'draw'" class="text-gray-300 text-xl font-bold">
+                        🤝 It's a draw!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Game Board -->
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-6 shadow-xl">
+                <div class="relative max-w-xs mx-auto aspect-square">
+                    <!-- Winning Line Overlay (SVG) -->
+                    <div x-show="winningCombo" class="absolute inset-0 pointer-events-none z-10">
+                        <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                            <line class="winning-line-svg"
+                                  :x1="getLineCoords().x1" :y1="getLineCoords().y1"
+                                  :x2="getLineCoords().x2" :y2="getLineCoords().y2"
+                                  stroke-linecap="round" />
+                        </svg>
+                    </div>
+                    
+                    <!-- Game Grid -->
+                    <div class="grid grid-cols-3 gap-2 relative z-0">
+                        <template x-for="(cell, index) in board" :key="index">
+                            <button @click="makeMove(index)"
+                                    :disabled="!canMakeMove(index)"
+                                    class="w-full h-full aspect-square bg-white/20 hover:bg-white/30 border-2 border-white/30 rounded-lg text-3xl font-bold transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                    :class="{
+                                        'text-blue-400': cell === 'X',
+                                        'text-red-400': cell === 'O',
+                                        'text-white': !cell,
+                                        'bg-green-500/30': lastMove && lastMove.position === index,
+                                        'winning-cell': winningCombo && winningCombo.includes(index)
+                                    }"
+                                    x-text="cell || ''">
+                            </button>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Reset Game Button -->
+                <div class="text-center mt-6">
+                    <button @click="resetGame()" 
+                            x-show="gameStatus === 'won' || gameStatus === 'draw'"
+                            class="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105">
+                        🔄 Play Again
+                    </button>
+                </div>
+            </div>
+
+            <!-- Player Info -->
+            <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4 mt-6 shadow-xl">
+                <div class="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                        <div class="text-blue-200">You</div>
+                        <div class="text-2xl font-bold" x-text="playerSymbol" :class="playerSymbol === 'X' ? 'text-blue-400' : 'text-red-400'"></div>
+                    </div>
+                    <div>
+                        <div class="text-blue-200">Opponent</div>
+                        <div class="text-2xl font-bold" x-text="opponentSymbol" :class="opponentSymbol === 'X' ? 'text-blue-400' : 'text-red-400'"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifications -->
+        <div x-show="toast.show" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-2"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform translate-y-0"
+             x-transition:leave-end="opacity-0 transform translate-y-2"
+             class="fixed bottom-4 right-4 z-50">
+            <div class="px-6 py-3 rounded-lg shadow-lg text-white"
+                 :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'">
+                <span x-text="toast.message"></span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html> 
