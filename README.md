@@ -59,4 +59,9 @@ tic-tac-toe/
 │   └── script.js        # Alpine.js logic
 ├── requirements.txt     # Python dependencies
 └── README.md           # Documentation
-``` 
+```
+
+## Screenshots
+![image](https://github.com/user-attachments/assets/0a2fce2b-3ff6-4ab5-b0dc-86ce72a12a35)
+![image](https://github.com/user-attachments/assets/36b5804c-243a-432b-b977-40f1a04b3b0e)
+
